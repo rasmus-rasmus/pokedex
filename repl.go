@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"errors"
 	"strings"
+	"web"
 )
 
 
@@ -36,11 +37,11 @@ func commandHelp() error {
 }
 
 func commandExit() error {
-	return errors.New("Exiting pokedex...")
+	return errors.New("exit")
 }
 
 func getCLIMap() map[string]cliCommand {
-
+	c := web.Config{-39, 1, "https://pokeapi.co/api/v2/location-area/"}
 	return map[string]cliCommand{
 		"help": {
 			name:        "help",
@@ -52,6 +53,16 @@ func getCLIMap() map[string]cliCommand {
 			description: "Exit the Pokedex",
 			callback:    commandExit,
 		},
+		"map": {
+			name: 		 "map",
+			description: "Get next 20 locations",
+			callback:	 web.GetNextMapCallbackFct(&c),
+		},
+		"mapb": {
+			name: 		 "mapb",
+			description: "Get previous 20 locations",
+			callback: 	 web.GetPrevMapCallbackFct(&c),
+		},
 	}
 }
 
@@ -62,7 +73,7 @@ func cleanInput(input string) []string {
 }
 
 
-func tartRepl() {
+func startRepl() {
 	cliMap := getCLIMap()
  
 	scanner := bufio.NewScanner(os.Stdin) 
@@ -79,8 +90,11 @@ func tartRepl() {
 		} else {
 			err := cmd.callback()
 			if err != nil {
+				if err.Error() == "exit" {
+					break
+				}
 				fmt.Println(err)
-				break
+				continue
 			}
 		}
 	}
