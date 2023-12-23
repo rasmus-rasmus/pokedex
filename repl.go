@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"time"
 	"web"
@@ -31,9 +32,15 @@ func commandHelp(cl_args []string) error {
 		return errors.New("Can't get cli map")
 	}
 
+	keys := make([]string, 0, len(cliMap))
+	for k := range cliMap {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+
 	fmt.Println("You have the following options:")
-	for _, v := range cliMap {
-		fmt.Printf("%v: %v\n", v.name, v.description)
+	for _, key := range keys {
+		fmt.Printf("%v: %v\n", cliMap[key].name, cliMap[key].description)
 	}
 	fmt.Print("\n")
 	return nil
