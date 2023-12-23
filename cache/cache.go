@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"fmt"
 	"sync"
 	"time"
 )
@@ -43,7 +42,6 @@ func (c Cache) reapLoop(interval time.Duration, done chan struct{}) {
 	for {
 		select {
 		case <-done:
-			fmt.Println("Terminating reapLoop")
 			return
 		case <-ticker.C:
 			c.mu.Lock()

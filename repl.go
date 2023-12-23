@@ -14,10 +14,10 @@ import (
 type cliCommand struct {
 	name        string
 	description string
-	callback    func() error
+	callback    func(cl_args []string) error
 }
 
-func commandHelp() error {
+func commandHelp(cl_args []string) error {
 	fmt.Print("Welcome to the pokedex!\n\n")
 
 	dummyCache, dummyChan := cache.NewCache(time.Duration(1 * time.Second))
@@ -39,7 +39,7 @@ func commandHelp() error {
 	return nil
 }
 
-func commandExit() error {
+func commandExit(cl_args []string) error {
 	return errors.New("exit")
 }
 
@@ -47,8 +47,9 @@ func getCLIMap(cache *cache.Cache) map[string]cliCommand {
 	conf := web.Config{
 		PrevResource: -39,
 		NextResource: 1,
-		Url:          "https://pokeapi.co/api/v2/location-area/",
+		Url:          "/api/v2/location-area/",
 	}
+	client := web.PokeAPIClient{ClientCache: cache}
 	return map[string]cliCommand{
 		"help": {
 			name:        "help",
@@ -63,12 +64,17 @@ func getCLIMap(cache *cache.Cache) map[string]cliCommand {
 		"map": {
 			name:        "map",
 			description: "See next 20 locations",
-			callback:    web.GetNextMapCallbackFct(&conf, cache),
+			callback:    web.GetNextMapCallbackFct(&conf, client),
 		},
 		"mapb": {
 			name:        "mapb",
 			description: "See previous 20 locations",
-			callback:    web.GetPrevMapCallbackFct(&conf, cache),
+			callback:    web.GetPrevMapCallbackFct(&conf, client),
+		},
+		"explore": {
+			name:        "explore",
+			description: "Explore area",
+			callback:    web.GetExploreAreaFct(&conf, client),
 		},
 	}
 }
@@ -96,7 +102,7 @@ func startRepl() {
 		if !ok {
 			fmt.Println("Invalid command - type 'help' for options")
 		} else {
-			err := cmd.callback()
+			err := cmd.callback(command[1:])
 			if err != nil {
 				if err.Error() == "exit" {
 					ch <- struct{}{} // Telling reapLoop to return

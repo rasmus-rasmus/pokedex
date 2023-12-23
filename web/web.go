@@ -1,12 +1,9 @@
 package web
 
 import (
-	"cache"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 )
 
 type Config struct {
@@ -15,29 +12,69 @@ type Config struct {
 	Url          string
 }
 
-func GetNextMapCallbackFct(conf *Config, cache *cache.Cache) func() error {
-	return func() error {
-		return getNextLocations(conf, cache)
+func GetNextMapCallbackFct(conf *Config, client PokeAPIClient) func(cl_args []string) error {
+	return func(cl_args []string) error {
+		if len(cl_args) > 0 {
+			return errors.New("Too many command line arguments. Expected 0.")
+		}
+		return getNextLocations(conf, client)
 	}
 }
 
-func GetPrevMapCallbackFct(conf *Config, cache *cache.Cache) func() error {
-	return func() error {
-		return getPrevLocations(conf, cache)
+func GetPrevMapCallbackFct(conf *Config, client PokeAPIClient) func(cl_args []string) error {
+	return func(cl_args []string) error {
+		if len(cl_args) > 0 {
+			return errors.New("Too many command line arguments. Expected 0.")
+		}
+		return getPrevLocations(conf, client)
 	}
 }
 
-func getNextLocations(conf *Config, cache *cache.Cache) error {
-	defer func(i *int) {
+func GetExploreAreaFct(conf *Config, client PokeAPIClient) func(cl_args []string) error {
+	return func(cl_args []string) error {
+		if len(cl_args) != 1 {
+			return errors.New(fmt.Sprintf("Expected 1 command line argument. Got %v", len(cl_args)))
+		}
+		return exploreArea(cl_args[0], conf.Url, client)
+	}
+}
+
+func makeFullUrl(endPointUrl, resource string) string {
+	if endPointUrl[0] != '/' {
+		endPointUrl = "/" + endPointUrl
+	}
+	if endPointUrl[len(endPointUrl)-1] != '/' {
+		endPointUrl = endPointUrl + "/"
+	}
+	return "https://pokeapi.co" + endPointUrl + resource + "/"
+}
+
+func exploreArea(location_name string, url string, client PokeAPIClient) error {
+	fullUrl := makeFullUrl(url, location_name)
+	body, err := client.fetchResource(fullUrl)
+	if err != nil {
+		return err
+	}
+
+	s := Location{}
+	json.Unmarshal(body, &s)
+	fmt.Printf("Exploring %v\n", s.Name)
+	for _, enc := range s.PokemonEncounters {
+		fmt.Printf("- %v\n", enc.Pokemon.Name)
+	}
+	return nil
+
+}
+
+func getNextLocations(conf *Config, client PokeAPIClient) error {
+	defer func(i, j *int) {
 		*i += 20
-	}(&conf.PrevResource)
-	defer func(i *int) {
-		*i += 20
-	}(&conf.NextResource)
+		*j += 20
+	}(&conf.PrevResource, &conf.NextResource)
 	for i := 0; i < 20; i++ {
 		nextResourceToFetch := conf.NextResource + i
 		fmt.Printf("%v: ", nextResourceToFetch)
-		err := getNextLocation(conf.Url, nextResourceToFetch, cache)
+		err := getNextLocation(conf.Url, nextResourceToFetch, client)
 		if err != nil {
 			return err
 		}
@@ -45,20 +82,18 @@ func getNextLocations(conf *Config, cache *cache.Cache) error {
 	return nil
 }
 
-func getPrevLocations(conf *Config, cache *cache.Cache) error {
+func getPrevLocations(conf *Config, client PokeAPIClient) error {
 	if conf.PrevResource < 1 {
 		return errors.New("No more maps to show")
 	}
-	defer func(i *int) {
+	defer func(i, j *int) {
 		*i -= 20
-	}(&conf.PrevResource)
-	defer func(i *int) {
-		*i -= 20
-	}(&conf.NextResource)
+		*j -= 20
+	}(&conf.PrevResource, &conf.NextResource)
 	for i := 0; i < 20; i++ {
 		nextResourceToFetch := conf.PrevResource + i
 		fmt.Printf("%v: ", nextResourceToFetch)
-		err := getPrevLocation(conf.Url, nextResourceToFetch, cache)
+		err := getPrevLocation(conf.Url, nextResourceToFetch, client)
 		if err != nil {
 			return err
 		}
@@ -66,56 +101,26 @@ func getPrevLocations(conf *Config, cache *cache.Cache) error {
 	return nil
 }
 
-func getNextLocation(url string, resource int, cache *cache.Cache) error {
-	var body []byte
-	fullUrl := url + fmt.Sprint(resource) + "/"
-	val, ok := cache.Get(fullUrl)
-	if ok {
-		body = val
-	} else {
-		res, err := http.Get(fullUrl)
-		if err != nil {
-			return errors.New("Failed to fetch resource")
-		}
-		resBody, err := io.ReadAll(res.Body)
-		res.Body.Close()
-		if err != nil {
-			return errors.New("Response malformed")
-		}
-		if res.StatusCode > 299 {
-			return errors.New(fmt.Sprintf("Request failed with status code %v", res.StatusCode))
-		}
-		body = resBody
-		cache.Add(fullUrl, body)
+func getNextLocation(url string, resource int, client PokeAPIClient) error {
+	fullUrl := makeFullUrl(url, fmt.Sprint(resource))
+	body, err := client.fetchResource(fullUrl)
+	if err != nil {
+		return err
 	}
+
 	s := Location{}
 	json.Unmarshal(body, &s)
 	fmt.Println(s.Name)
-	return nil
+	return err
 }
 
-func getPrevLocation(url string, resource int, cache *cache.Cache) error {
-	var body []byte
-	fullUrl := url + fmt.Sprint(resource) + "/"
-	val, ok := cache.Get(fullUrl)
-	if ok {
-		body = val
-	} else {
-		res, err := http.Get(url + fmt.Sprint(resource) + "/")
-		if err != nil {
-			return errors.New("Failed to fetch resource")
-		}
-		resBody, err := io.ReadAll(res.Body)
-		res.Body.Close()
-		if res.StatusCode > 299 {
-			return errors.New("Request failed")
-		}
-		if err != nil {
-			return errors.New("Response malformed")
-		}
-		body = resBody
-		cache.Add(fullUrl, body)
+func getPrevLocation(url string, resource int, client PokeAPIClient) error {
+	fullUrl := makeFullUrl(url, fmt.Sprint(resource))
+	body, err := client.fetchResource(fullUrl)
+	if err != nil {
+		return err
 	}
+
 	s := Location{}
 	json.Unmarshal(body, &s)
 	fmt.Println(s.Name)
