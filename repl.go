@@ -57,6 +57,7 @@ func getCLIMap(cache *cache.Cache) map[string]cliCommand {
 		Url:          "/api/v2/location-area/",
 	}
 	client := web.PokeAPIClient{ClientCache: cache}
+	pokeMap := map[string]web.Pokemon{}
 	return map[string]cliCommand{
 		"help": {
 			name:        "help",
@@ -81,7 +82,12 @@ func getCLIMap(cache *cache.Cache) map[string]cliCommand {
 		"explore": {
 			name:        "explore",
 			description: "Explore area",
-			callback:    web.GetExploreAreaFct(&conf, client),
+			callback:    web.GetExploreAreaCallbackFct(&conf, client),
+		},
+		"catch": {
+			name:        "catch",
+			description: "Catch a pokemon",
+			callback:    web.GetCatchPokemonCallbackFct(pokeMap, client),
 		},
 	}
 }
