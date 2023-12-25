@@ -91,8 +91,13 @@ func getCLIMap(cache *cache.Cache) map[string]cliCommand {
 		},
 		"inspect": {
 			name:        "inspect",
-			description: "Print data about a pokemon",
+			description: "Inspects a pokemon you have caught",
 			callback:    web.GetInspectCallbackFct(pokeMap),
+		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "Displays all pokemon you have caught",
+			callback:    web.GetPokedexCallbackFct(pokeMap),
 		},
 	}
 }

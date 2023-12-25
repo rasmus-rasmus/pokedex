@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"slices"
 	"time"
 )
 
@@ -80,21 +81,27 @@ func formatPokemonData(pokemon Pokemon) {
 	fmt.Printf("weight: %d\n", pokemon.Weight)
 	fmt.Println("Stats:")
 	for _, stat := range pokemon.Stats {
-		fmt.Printf("-%s: %d\n", stat.Stat.Name, stat.BaseStat)
+		fmt.Printf("  -%s: %d\n", stat.Stat.Name, stat.BaseStat)
 	}
 	fmt.Println("Types:")
 	for _, t := range pokemon.Types {
-		fmt.Printf("-%s\n", t.Type.Name)
+		fmt.Printf("  -%s\n", t.Type.Name)
 	}
 }
 
-func findBaseStat(pokemon Pokemon, statName string) (int, error) {
-	for _, stat := range pokemon.Stats {
-		if stat.Stat.Name == statName {
-			return stat.BaseStat, nil
+func GetPokedexCallbackFct(pokeMap map[string]Pokemon) func(cl_args []string) error {
+	return func(cl_args []string) error {
+		allPokemon := make([]string, 0, len(pokeMap))
+		for key := range pokeMap {
+			allPokemon = append(allPokemon, key)
 		}
+		slices.Sort(allPokemon)
+		fmt.Println("Your pokedex: ")
+		for i, name := range allPokemon {
+			fmt.Printf("  %d: %s\n", i+1, name)
+		}
+		return nil
 	}
-	return 0, fmt.Errorf("Stat not found: %s", statName)
 }
 
 func catchPokemon(pokeName string, pokeMap map[string]Pokemon, client PokeAPIClient) error {
