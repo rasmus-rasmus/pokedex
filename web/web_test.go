@@ -69,13 +69,14 @@ func TestCatchPokemon(t *testing.T) {
 			res.Body.Close()
 			pokemon := Pokemon{}
 			json.Unmarshal(body, &pokemon)
+			var pokeballStrength int
 			if c.shouldBeAddedToPokedex {
-				pokemon.BaseExperience = 0
+				pokeballStrength = pokemon.BaseExperience
 			} else {
-				pokemon.BaseExperience = 301
+				pokeballStrength = 0
 			}
 			pokeMap := make(map[string]Pokemon)
-			throwPokeball(pokemon, pokeMap)
+			throwPokeball(pokemon, pokeMap, pokeballStrength)
 			_, ok := pokeMap[c.pokeName]
 			if ok != c.shouldBeAddedToPokedex {
 				t.Errorf("%v was added: %v. Should have been added: %v", c.pokeName, ok, c.shouldBeAddedToPokedex)

@@ -50,6 +50,21 @@ func commandExit(cl_args []string) error {
 	return errors.New("exit")
 }
 
+func getPokedexCallbackFct(pokeMap map[string]web.Pokemon) func(cl_args []string) error {
+	return func(cl_args []string) error {
+		allPokemon := make([]string, 0, len(pokeMap))
+		for key := range pokeMap {
+			allPokemon = append(allPokemon, key)
+		}
+		slices.Sort(allPokemon)
+		fmt.Println("Your pokedex: ")
+		for i, name := range allPokemon {
+			fmt.Printf("  %d: %s\n", i+1, name)
+		}
+		return nil
+	}
+}
+
 func getCLIMap(cache *cache.Cache) map[string]cliCommand {
 	conf := web.Config{
 		PrevResource: -39,
@@ -80,24 +95,24 @@ func getCLIMap(cache *cache.Cache) map[string]cliCommand {
 			callback:    web.GetPrevMapCallbackFct(&conf, client),
 		},
 		"explore": {
-			name:        "explore",
+			name:        "explore - expects one argument: location name",
 			description: "Explore area",
 			callback:    web.GetExploreAreaCallbackFct(&conf, client),
 		},
 		"catch": {
 			name:        "catch",
-			description: "Catch a pokemon",
+			description: "Catch a pokemon - expects one or two arguments: pokemon name and (optionally) pokeball to use; poke (default if none passed), great or ultra",
 			callback:    web.GetCatchPokemonCallbackFct(pokeMap, client),
 		},
 		"inspect": {
 			name:        "inspect",
-			description: "Inspects a pokemon you have caught",
+			description: "Inspects a pokemon you have caught - expects one argument: pokemon name",
 			callback:    web.GetInspectCallbackFct(pokeMap),
 		},
 		"pokedex": {
 			name:        "pokedex",
 			description: "Displays all pokemon you have caught",
-			callback:    web.GetPokedexCallbackFct(pokeMap),
+			callback:    getPokedexCallbackFct(pokeMap),
 		},
 	}
 }
